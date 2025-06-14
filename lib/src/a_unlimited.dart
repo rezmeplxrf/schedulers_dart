@@ -28,7 +28,7 @@ class Unlimited implements Comparable<Unlimited> {
   Unlimited next() {
     final newParts = List<int>.from(_parts);
 
-    for (int i = 0;; ++i) {
+    for (var i = 0;; ++i) {
       if (newParts.length <= i) {
         newParts.add(1);
         break;
@@ -49,21 +49,21 @@ class Unlimited implements Comparable<Unlimited> {
     assert(result >= this);
     assert(this < result);
     assert(this <= result);
-    assert(this.compareTo(result) == -1);
+    assert(compareTo(result) == -1);
     assert(result.compareTo(this) == 1);
 
     return result;
   }
 
   @override
-  int compareTo(final Unlimited other) {
-    if (this._parts.length != other._parts.length) {
-      return (this._parts.length < other._parts.length) ? -1 : 1;
+  int compareTo(Unlimited other) {
+    if (_parts.length != other._parts.length) {
+      return (_parts.length < other._parts.length) ? -1 : 1;
     }
 
-    for (int i = this._parts.length - 1; i >= 0; --i) {
-      if (this._parts[i] != other._parts[i]) {
-        return (this._parts[i] < other._parts[i]) ? -1 : 1;
+    for (var i = _parts.length - 1; i >= 0; --i) {
+      if (_parts[i] != other._parts[i]) {
+        return (_parts[i] < other._parts[i]) ? -1 : 1;
       }
     }
 
@@ -71,27 +71,25 @@ class Unlimited implements Comparable<Unlimited> {
   }
 
   @override
-  bool operator ==(final Object other) =>
-      (other is Unlimited) && this.compareTo(other) == 0;
-  bool operator <(final Object other) =>
-      (other is Unlimited) && this.compareTo(other) < 0;
-  bool operator >(final Object other) =>
-      (other is Unlimited) && this.compareTo(other) > 0;
-  bool operator <=(final Object other) =>
-      (other is Unlimited) && this.compareTo(other) <= 0;
-  bool operator >=(final Object other) =>
-      (other is Unlimited) && this.compareTo(other) >= 0;
+  bool operator ==(Object other) =>
+      (other is Unlimited) && compareTo(other) == 0;
+  bool operator <(Object other) => (other is Unlimited) && compareTo(other) < 0;
+  bool operator >(Object other) => (other is Unlimited) && compareTo(other) > 0;
+  bool operator <=(Object other) =>
+      (other is Unlimited) && compareTo(other) <= 0;
+  bool operator >=(Object other) =>
+      (other is Unlimited) && compareTo(other) >= 0;
 
   @override
-  int get hashCode => this._parts.first;
+  int get hashCode => _parts.first;
 
   @override
   String toString() {
-    String result = '';
+    var result = '';
 
-    for (int i = 0; i < this._parts.length; ++i) {
-      var hex = this._parts[i].toRadixString(16);
-      if (i < this._parts.length - 1) {
+    for (var i = 0; i < _parts.length; ++i) {
+      var hex = _parts[i].toRadixString(16);
+      if (i < _parts.length - 1) {
         hex = hex.padLeft(12, '0');
       }
       result = hex + result;

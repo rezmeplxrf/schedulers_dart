@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 
-import 'b_base.dart';
+import 'package:schedulers/src/b_base.dart';
 
 /// Runs tasks asynchronously, maintaining a fixed time interval between starts.
 ///
@@ -21,28 +21,28 @@ class IntervalScheduler implements PriorityScheduler {
   bool _scheduled = false;
 
   @override
-  int get queueLength => this._tasks.length;
+  int get queueLength => _tasks.length;
 
-  bool get isComplete => this._tasks.length > 0;
+  bool get isComplete => _tasks.length > 0;
 
   Completer<void> _completer = Completer();
 
-  Future<void> get completed => this._completer.future;
+  Future<void> get completed => _completer.future;
 
   /// Notifies the scheduler that it should run the callback sometime. The
   /// actual call will occur asynchronously at the time selected by the
   /// scheduler.
   @override
-  Task<R> run<R>(final GetterFunc<R> callback, [final int priority = 0]) {
-    if (this._tasks.length <= 0) {
-      this._completer = Completer();
+  Task<R> run<R>(GetterFunc<R> callback, [int priority = 0]) {
+    if (_tasks.length <= 0) {
+      _completer = Completer();
     }
 
-    final newTask = PriorityTask(callback, priority,
-        onCancel: _tasks.removeOrThrow);
+    final newTask =
+        PriorityTask(callback, priority, onCancel: _tasks.removeOrThrow);
 
     _tasks.add(newTask);
-    this._runRunnerLater();
+    _runRunnerLater();
 
     return newTask;
   }
@@ -57,11 +57,11 @@ class IntervalScheduler implements PriorityScheduler {
   }
 
   void _runner() {
-    this._scheduled = false;
+    _scheduled = false;
 
-    if (this._disposed) {
-      if (!this._completer.isCompleted) {
-        this._completer.complete();
+    if (_disposed) {
+      if (!_completer.isCompleted) {
+        _completer.complete();
       }
       return;
     }
@@ -69,18 +69,18 @@ class IntervalScheduler implements PriorityScheduler {
     try {
       _tasks.removeFirst().runIfNotCanceled();
     } finally {
-      if (this._tasks.length <= 0) {
-        this._completer.complete();
+      if (_tasks.length <= 0) {
+        _completer.complete();
       }
 
-      this._runRunnerLater();
+      _runRunnerLater();
     }
   }
 
   void _runRunnerLater() {
-    if (!this._scheduled && _tasks.length > 0) {
-      Future.delayed(this.delay, this._runner);
-      this._scheduled = true;
+    if (!_scheduled && _tasks.length > 0) {
+      Future.delayed(delay, _runner);
+      _scheduled = true;
     }
   }
 }

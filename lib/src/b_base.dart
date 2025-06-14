@@ -6,7 +6,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
-import 'a_unlimited.dart';
+import 'package:schedulers/src/a_unlimited.dart';
 
 typedef GetterFunc<R> = FutureOr<R> Function();
 
@@ -25,7 +25,7 @@ abstract class Task<R> {
   /// task.
   bool get willRun;
 
-  set willRun(final bool x);
+  set willRun(bool x);
 }
 
 class InternalTask<R> extends Task<R> {
@@ -116,7 +116,7 @@ class InternalTask<R> extends Task<R> {
   bool get willRun => _willRun;
 
   @override
-  set willRun(final bool value) {
+  set willRun(bool value) {
     if (this._willRun == value) {
       return;
     }
@@ -140,17 +140,15 @@ class InternalTask<R> extends Task<R> {
 
 class PriorityTask<R> extends InternalTask<R>
     implements Comparable<PriorityTask<R>> {
+  PriorityTask(super.callback, this.priority, {super.onCancel});
   static Unlimited _idGenerator = Unlimited();
 
-  PriorityTask(final GetterFunc<R> callback, this.priority,
-      {final CancelFunc? onCancel})
-      : super(callback, onCancel: onCancel);
-
   final int priority;
-  final id = (PriorityTask._idGenerator = PriorityTask._idGenerator.next());
+  final Unlimited id =
+      PriorityTask._idGenerator = PriorityTask._idGenerator.next();
 
   @override
-  int compareTo(final PriorityTask<R> other) {
+  int compareTo(PriorityTask<R> other) {
     // taskA<taskB if taskA has larger priority
     var x = -this.priority.compareTo(other.priority);
 
@@ -166,17 +164,17 @@ class PriorityTask<R> extends InternalTask<R>
 @internal
 extension QueueExt on PriorityQueue<InternalTask<dynamic>> {
   /// Will throw if the task in not in queue.
-  void removeOrThrow(final InternalTask<dynamic> task) {
-    final s = this.length;
-    if (!this.remove(task)) {
+  void removeOrThrow(InternalTask<dynamic> task) {
+    final s = length;
+    if (!remove(task)) {
       throw ArgumentError('Task not found.');
     }
-    assert(this.length == s - 1);
+    assert(length == s - 1);
   }
 }
 
 abstract class PriorityScheduler {
-  Task<R> run<R>(final GetterFunc<R> callback, [final int priority = 0]);
+  Task<R> run<R>(GetterFunc<R> callback, [int priority = 0]);
 
   int get queueLength;
 }

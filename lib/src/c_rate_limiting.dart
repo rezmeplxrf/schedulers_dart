@@ -6,7 +6,7 @@ import 'dart:collection';
 
 import 'package:collection/collection.dart';
 
-import 'b_base.dart';
+import 'package:schedulers/src/b_base.dart';
 
 /// Runs no more than N tasks in a certain period of time.
 ///
@@ -17,17 +17,16 @@ import 'b_base.dart';
 /// The object is useful, for example, for accessing an API with a limit of "no
 /// more than 5 requests per minute".
 class RateScheduler implements PriorityScheduler {
+  RateScheduler(this.n, this.per);
   final _queue = HeapPriorityQueue<PriorityTask<dynamic>>();
 
   // todo add dispose
 
   @override
-  int get queueLength => this._queue.length;
+  int get queueLength => _queue.length;
 
   final int n;
   final Duration per;
-
-  RateScheduler(this.n, this.per);
 
   final Queue<Stopwatch> _recentTimes = Queue<Stopwatch>();
 
@@ -35,44 +34,44 @@ class RateScheduler implements PriorityScheduler {
   /// actual call will occur asynchronously at the time selected by the
   /// scheduler.
   @override
-  Task<R> run<R>(final GetterFunc<R> callback, [final int priority = 0]) {
+  Task<R> run<R>(GetterFunc<R> callback, [int priority = 0]) {
     PriorityTask<R>? result;
     result =
         PriorityTask<R>(callback, priority, onCancel: _queue.removeOrThrow);
     _queue.add(result);
-    this._loopAsync();
+    _loopAsync();
     return result;
   }
 
-  void runEmpty() => this._loopAsync();
+  void runEmpty() => _loopAsync();
 
   bool _isLooping = false;
 
   void stop() {
-    this._breakLoopNow = true;
+    _breakLoopNow = true;
   }
 
   bool _breakLoopNow = false;
 
   Future<void> _loopAsync() async {
     // предотвращаем параллельную работу нескольких _loop
-    if (this._isLooping) {
+    if (_isLooping) {
       return;
     }
 
-    this._isLooping = true;
+    _isLooping = true;
 
     try {
-      while (this._queue.length > 0) {
+      while (_queue.length > 0) {
         if (_breakLoopNow) {
           _breakLoopNow = false;
           break;
         }
 
-        if (this._recentTimes.length >= n) {
+        if (_recentTimes.length >= n) {
           // we will wail the oldest task to become "too old"
-          final delay = this.per - this._recentTimes.first.elapsed;
-          if (delay > const Duration(seconds: 0)) {
+          final delay = per - _recentTimes.first.elapsed;
+          if (delay > Duration.zero) {
             await Future<void>.delayed(delay);
             // sometimes this pause ends a few milliseconds earlier than
             // expected (the actual delay is shorter than specified by the
@@ -85,21 +84,20 @@ class RateScheduler implements PriorityScheduler {
         }
 
         // removing too old tasks
-        while (this._recentTimes.isNotEmpty &&
-            this._recentTimes.first.elapsed >= this.per) {
-          this._recentTimes.removeFirst();
+        while (_recentTimes.isNotEmpty && _recentTimes.first.elapsed >= per) {
+          _recentTimes.removeFirst();
         }
 
-        while (this._recentTimes.length < n && this._queue.isNotEmpty) {
+        while (_recentTimes.length < n && _queue.isNotEmpty) {
           // running new task
-          final task = this._queue.removeFirst();
+          final task = _queue.removeFirst();
           // remembering task start time
-          this._recentTimes.add(Stopwatch()..start());
+          _recentTimes.add(Stopwatch()..start());
           unawaited(Future(task.runIfNotCanceled));
         }
       }
     } finally {
-      this._isLooping = false;
+      _isLooping = false;
     }
   }
 }

@@ -9,36 +9,34 @@ import 'package:schedulers/src/b_base.dart';
 /// That is, if you add many tasks within a short period of time, then only one of them will be
 /// executed: the last one added.
 class LazyScheduler {
-  int _ignored = 0;
-  final int? callEach;
-  GetterFunc<void>? _callback;
-  late Duration latency;
-
   // todo return Task from run
   // todo add dispose
 
-
   LazyScheduler({this.latency = const Duration(seconds: 1000), this.callEach});
+  int _ignored = 0;
+  final int? callEach;
+  late GetterFunc<void>? _callback;
+  late Duration latency;
 
   Unlimited _newestRunId = Unlimited();
 
   /// Notifies the scheduler that it should run the callback sometime. The
   /// actual call will occur asynchronously at the time selected by the
   /// scheduler.
-  void run(final GetterFunc<void> callback) async {
-    this._callback = callback;
+  Future<void> run(GetterFunc<void> callback) async {
+    _callback = callback;
 
     _newestRunId = _newestRunId.next();
     final runId = _newestRunId;
 
-    await Future<void>.delayed(this.latency);
+    await Future<void>.delayed(latency);
 
-    if (this._newestRunId == runId) {
-      this._callback!();
-      this._ignored = 0;
-    } else if (this.callEach != null && ++this._ignored >= this.callEach!) {
-      this._callback!();
-      this._ignored = 0;
+    if (_newestRunId == runId) {
+      _callback!();
+      _ignored = 0;
+    } else if (callEach != null && ++_ignored >= callEach!) {
+      _callback!();
+      _ignored = 0;
     }
   }
 }

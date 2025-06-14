@@ -2,19 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 import 'dart:async';
-import 'b_base.dart';
+import 'package:schedulers/src/b_base.dart';
 
-class TimeScheduler
-{
-  Task<R> run<R>(final GetterFunc<R> func, final DateTime time) {
-
-    if (this._disposed) {
+class TimeScheduler {
+  Task<R> run<R>(GetterFunc<R> func, DateTime time) {
+    if (_disposed) {
       throw StateError('The object is disposed');
     }
 
     final t = InternalTask<R>(func);
     Future.delayed(_computeDelay(time), () {
-      if (!this._disposed) {
+      if (!_disposed) {
         t.runIfNotCanceled();
       }
     });
@@ -24,18 +22,16 @@ class TimeScheduler
 
   void dispose() {
     // todo cancel tasks
-    this._disposed = true;
+    _disposed = true;
   }
 
   bool _disposed = false;
 
-
-  Duration _computeDelay(final DateTime targetTime, {DateTime? now})
-  {
+  Duration _computeDelay(DateTime targetTime, {DateTime? now}) {
     now ??= DateTime.now();
 
     if (targetTime.isBefore(now)) {
-      return const Duration(microseconds: 0);
+      return Duration.zero;
     } else {
       final result = targetTime.difference(now);
       assert(!result.isNegative);

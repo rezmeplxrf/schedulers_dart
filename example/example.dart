@@ -1,3 +1,5 @@
+// ignore_for_file: cascade_invocations
+
 import 'package:schedulers/schedulers.dart';
 
 Future<void> download(String url) async {
@@ -5,7 +7,7 @@ Future<void> download(String url) async {
 }
 
 void main() {
-  final scheduler = RateScheduler(3, Duration(seconds: 1)); // 3 per second
+  final scheduler = RateScheduler(3, const Duration(seconds: 1)); // 3 per second
 
   // the following tasks are executed immediately
   scheduler.run(() => download('pageA'));

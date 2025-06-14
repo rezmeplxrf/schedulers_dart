@@ -6,22 +6,21 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
-import 'b_base.dart';
+import 'package:schedulers/src/b_base.dart';
 
 /// Limits the number of tasks running at the same time. This is somewhat
 /// similar to using a thread pool or process pool. But it just runs async
 /// functions.
 class ParallelScheduler implements PriorityScheduler {
+  /// [max] sets the maximum number of tasks that can be run simultaneously.
+  ParallelScheduler(this.max);
   final int max;
   final _tasks = HeapPriorityQueue<PriorityTask<dynamic>>();
 
-  /// [max] sets the maximum number of tasks that can be run simultaneously.
-  ParallelScheduler(this.max);
-
   @override
-  Task<R> run<R>(final GetterFunc<R> callback, [final int priority = 0]) {
-    final newTask = PriorityTask(callback, priority,
-        onCancel: _tasks.removeOrThrow);
+  Task<R> run<R>(GetterFunc<R> callback, [int priority = 0]) {
+    final newTask =
+        PriorityTask(callback, priority, onCancel: _tasks.removeOrThrow);
 
     _tasks.add(newTask);
     _maybeRunTasks();
