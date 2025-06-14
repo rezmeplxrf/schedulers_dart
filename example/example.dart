@@ -3,7 +3,8 @@
 import 'package:schedulers/schedulers.dart';
 
 Future<void> download(String url) async {
-  // relax, this is an example
+  print('Downloading $url...');
+  print('Downloaded $url');
 }
 
 void main() {
