@@ -7,43 +7,16 @@ import 'package:meta/meta.dart';
 /// Useful for creating identifiers that are unique in the course of the
 /// program, and each subsequent one is larger than the previous one.
 class Unlimited implements Comparable<Unlimited> {
-  // Looks like I invented the wheel. Instead of this object, we could use a
-  // regular BigInt. I still keeping it, because it's tested and not a fact that
-  // BigInt is more effective for the specific task.
-
-  Unlimited() : _parts = <int>[0];
+  Unlimited() : _value = BigInt.zero;
 
   @visibleForTesting
   @internal
-  Unlimited.fromParts(this._parts);
+  Unlimited.fromBigInt(this._value);
 
-  @internal
-  static const partMax = 0xFFFFFFFFFFFF;
-
-  final List<int> _parts;
-
-  @internal
-  int get partsLength => _parts.length;
+  final BigInt _value;
 
   Unlimited next() {
-    final newParts = List<int>.from(_parts);
-
-    for (var i = 0;; ++i) {
-      if (newParts.length <= i) {
-        newParts.add(1);
-        break;
-      }
-      if (newParts[i] < partMax) {
-        newParts[i]++;
-        break;
-      } else {
-        assert(newParts[i] == partMax);
-        newParts[i] = 0;
-        // and go to next i: increment higher part
-      }
-    }
-
-    final result = Unlimited.fromParts(newParts);
+    final result = Unlimited.fromBigInt(_value + BigInt.one);
 
     assert(result > this);
     assert(result >= this);
@@ -57,44 +30,26 @@ class Unlimited implements Comparable<Unlimited> {
 
   @override
   int compareTo(Unlimited other) {
-    if (_parts.length != other._parts.length) {
-      return (_parts.length < other._parts.length) ? -1 : 1;
-    }
-
-    for (var i = _parts.length - 1; i >= 0; --i) {
-      if (_parts[i] != other._parts[i]) {
-        return (_parts[i] < other._parts[i]) ? -1 : 1;
-      }
-    }
-
-    return 0;
+    return _value.compareTo(other._value);
   }
 
   @override
   bool operator ==(Object other) =>
-      (other is Unlimited) && compareTo(other) == 0;
-  bool operator <(Object other) => (other is Unlimited) && compareTo(other) < 0;
-  bool operator >(Object other) => (other is Unlimited) && compareTo(other) > 0;
+      (other is Unlimited) && _value == other._value;
+  bool operator <(Object other) =>
+      (other is Unlimited) && _value < other._value;
+  bool operator >(Object other) =>
+      (other is Unlimited) && _value > other._value;
   bool operator <=(Object other) =>
-      (other is Unlimited) && compareTo(other) <= 0;
+      (other is Unlimited) && _value <= other._value;
   bool operator >=(Object other) =>
-      (other is Unlimited) && compareTo(other) >= 0;
+      (other is Unlimited) && _value >= other._value;
 
   @override
-  int get hashCode => _parts.first;
+  int get hashCode => _value.hashCode;
 
   @override
   String toString() {
-    var result = '';
-
-    for (var i = 0; i < _parts.length; ++i) {
-      var hex = _parts[i].toRadixString(16);
-      if (i < _parts.length - 1) {
-        hex = hex.padLeft(12, '0');
-      }
-      result = hex + result;
-    }
-
-    return result;
+    return _value.toRadixString(16);
   }
 }
