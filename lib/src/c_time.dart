@@ -13,7 +13,7 @@ class TimeScheduler {
     final t = InternalTask<R>(func);
     Future.delayed(_computeDelay(time), () {
       if (!_disposed) {
-        t.runIfNotCanceled();
+        unawaited(t.runIfNotCanceled());
       }
     });
 

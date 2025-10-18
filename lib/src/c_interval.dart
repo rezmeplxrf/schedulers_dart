@@ -67,7 +67,7 @@ class IntervalScheduler implements PriorityScheduler {
     }
 
     try {
-      _tasks.removeFirst().runIfNotCanceled();
+      unawaited(_tasks.removeFirst().runIfNotCanceled());
     } finally {
       if (_tasks.length <= 0) {
         _completer.complete();

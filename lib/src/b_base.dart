@@ -40,16 +40,16 @@ class InternalTask<R> extends Task<R> {
 
   @internal
   Future<void> runIfNotCanceled() async {
-    if (!this._willRun) {
+    if (!_willRun) {
       return;
     }
 
     try {
-      this._readyResult = await this._block();
-      assert(!this._haveResult);
-      this._haveResult = true;
+      _readyResult = await _block();
+      assert(!_haveResult);
+      _haveResult = true;
       assert(_completer == null || !_completer!.isCompleted);
-      this._completer?.complete(this._readyResult);
+      _completer?.complete(_readyResult);
     } catch (e, stacktrace) {
       // when the _block throws error:
       //
@@ -82,15 +82,15 @@ class InternalTask<R> extends Task<R> {
       // He we probably get an unhandled `TaskCanceled`. To avoid this he
       // can just avoid canceling tasks, or storing their future results...
 
-      if (this._completer != null) {
+      if (_completer != null) {
         assert(!_completer!.isCompleted);
-        this._completer!.completeError(e, stacktrace);
+        _completer!.completeError(e, stacktrace);
       } else {
         assert(_completer == null);
         rethrow;
       }
     } finally {
-      this._willRun = false; // todo unit test
+      _willRun = false; // todo unit test
     }
   }
 
@@ -108,7 +108,7 @@ class InternalTask<R> extends Task<R> {
   @override
   Future<R> get result => _haveResult
       ? Future<R>.value(_readyResult)
-      : (this._completer ??= Completer<R>()).future;
+      : (_completer ??= Completer<R>()).future;
 
   bool _willRun = true;
 
@@ -117,44 +117,45 @@ class InternalTask<R> extends Task<R> {
 
   @override
   set willRun(bool value) {
-    if (this._willRun == value) {
+    if (_willRun == value) {
       return;
     }
 
     if (value) {
       throw StateError(
-          'Cannot set willRun to true after it after it has been set to false');
+        'Cannot set willRun to true after it after it has been set to false',
+      );
     }
 
-    assert(this._willRun);
+    assert(_willRun);
     assert(!value);
 
-    this._willRun = false;
-    this.onCancel?.call(this);
+    _willRun = false;
+    onCancel?.call(this);
 
-    if (this._completer?.isCompleted == false) {
-      this._completer!.completeError(TaskCanceled);
+    if (_completer?.isCompleted == false) {
+      _completer!.completeError(TaskCanceled);
     }
   }
 }
 
 class PriorityTask<R> extends InternalTask<R>
     implements Comparable<PriorityTask<R>> {
-  PriorityTask(super.callback, this.priority, {super.onCancel});
+  PriorityTask(super._block, this.priority, {super.onCancel});
   static Unlimited _idGenerator = Unlimited();
 
   final int priority;
-  final Unlimited id =
-      PriorityTask._idGenerator = PriorityTask._idGenerator.next();
+  final Unlimited id = PriorityTask._idGenerator = PriorityTask._idGenerator
+      .next();
 
   @override
-  int compareTo(PriorityTask<R> other) {
+  int compareTo(PriorityTask<dynamic> other) {
     // taskA<taskB if taskA has larger priority
-    var x = -this.priority.compareTo(other.priority);
+    var x = -priority.compareTo(other.priority);
 
     // taskA<taskB if taskA created earlier (so taskA.id<taskB.id)
     if (x == 0) {
-      x = this.id.compareTo(other.id);
+      x = id.compareTo(other.id);
     }
 
     return x;

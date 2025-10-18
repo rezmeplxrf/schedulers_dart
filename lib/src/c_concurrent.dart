@@ -19,8 +19,11 @@ class ParallelScheduler implements PriorityScheduler {
 
   @override
   Task<R> run<R>(GetterFunc<R> callback, [int priority = 0]) {
-    final newTask =
-        PriorityTask(callback, priority, onCancel: _tasks.removeOrThrow);
+    final newTask = PriorityTask(
+      callback,
+      priority,
+      onCancel: _tasks.removeOrThrow,
+    );
 
     _tasks.add(newTask);
     _maybeRunTasks();
@@ -44,13 +47,15 @@ class ParallelScheduler implements PriorityScheduler {
     while (_currentlyRunning < max && _tasks.isNotEmpty) {
       final runMe = _tasks.removeFirst();
       _currentlyRunning += 1;
-      Future.microtask(() async {
-        await runMe.runIfNotCanceled();
-      }).whenComplete(() {
-        _currentlyRunning--;
-        assert(_currentlyRunning >= 0);
-        _maybeRunTasks();
-      });
+      unawaited(
+        Future.microtask(() async {
+          await runMe.runIfNotCanceled();
+        }).whenComplete(() {
+          _currentlyRunning--;
+          assert(_currentlyRunning >= 0);
+          _maybeRunTasks();
+        }),
+      );
     }
 
     assert(_currentlyRunning == max || _tasks.isEmpty);
