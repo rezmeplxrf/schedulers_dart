@@ -1,15 +1,15 @@
 // SPDX-FileCopyrightText: (c) 2021 Artsiom iG <github.com/rtmigo>
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
+
 import 'package:schedulers/schedulers.dart';
 import 'package:test/test.dart';
 
 void main() {
-
   // todo test tasks that throw exceptions
   // todo test waiting for failed tasks
   // todo test waiting for tasks when the scheduler is disposed
-
 
   test('RateLimitingScheduler Limiting', () async {
     const F = 2;
@@ -105,4 +105,110 @@ void main() {
     expect(await task2.result, 2);
     expect(await task1.result, 1);
   });
+
+  test('RateLimitingScheduler rejects invalid configuration', () {
+    expect(
+      () => RateScheduler(0, const Duration(milliseconds: 1)),
+      throwsArgumentError,
+    );
+    expect(
+      () => RateScheduler(1, Duration.zero),
+      throwsArgumentError,
+    );
+    expect(
+      () => RateScheduler(1, const Duration(milliseconds: -1)),
+      throwsArgumentError,
+    );
+  });
+
+  test(
+    'RateLimitingScheduler respects sliding window across a burst',
+    () async {
+      final scheduler = RateScheduler(2, const Duration(milliseconds: 40));
+      final started = <DateTime>[];
+
+      final tasks = List.generate(6, (_) {
+        return scheduler.run(() {
+          started.add(DateTime.now());
+        }).result;
+      });
+
+      await Future.wait(tasks);
+
+      expect(started, hasLength(6));
+      for (var i = 2; i < started.length; i++) {
+        expect(
+          started[i].difference(started[i - 2]),
+          greaterThanOrEqualTo(const Duration(milliseconds: 35)),
+        );
+      }
+    },
+  );
+
+  test(
+    'RateLimitingScheduler respects rate limits across uneven continuous bursts',
+    () async {
+      final scheduler = RateScheduler(2, const Duration(milliseconds: 40));
+      final started = <DateTime>[];
+      final futures = <Future<void>>[];
+
+      void enqueue(int count) {
+        for (var i = 0; i < count; i++) {
+          futures.add(
+            scheduler.run(() {
+              started.add(DateTime.now());
+            }).result,
+          );
+        }
+      }
+
+      enqueue(3);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      enqueue(2);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+      enqueue(4);
+
+      await Future.wait(futures);
+
+      expect(started, hasLength(9));
+      for (var i = 2; i < started.length; i++) {
+        expect(
+          started[i].difference(started[i - 2]),
+          greaterThanOrEqualTo(const Duration(milliseconds: 35)),
+        );
+      }
+    },
+  );
+
+  test(
+    'RateLimitingScheduler queued cancellation removes task from future slots',
+    () async {
+      final scheduler = RateScheduler(1, const Duration(milliseconds: 40));
+      final started = <String>[];
+      final firstStarted = Completer<void>();
+      final releaseFirst = Completer<void>();
+
+      final first = scheduler.run(() async {
+        started.add('first');
+        firstStarted.complete();
+        await releaseFirst.future;
+      });
+      final canceled = scheduler.run(() {
+        started.add('canceled');
+      });
+      final last = scheduler.run(() {
+        started.add('last');
+      });
+
+      canceled.willRun = false;
+      await firstStarted.future;
+      releaseFirst.complete();
+
+      await first.result;
+      await expectLater(canceled.result, throwsA(isA<TaskCanceled>()));
+      await last.result;
+
+      expect(started, ['first', 'last']);
+    },
+  );
 }

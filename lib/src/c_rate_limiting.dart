@@ -17,7 +17,18 @@ import 'package:schedulers/src/b_base.dart';
 /// The object is useful, for example, for accessing an API with a limit of "no
 /// more than 5 requests per minute".
 class RateScheduler implements PriorityScheduler {
-  RateScheduler(this.n, this.per);
+  RateScheduler(this.n, this.per) {
+    if (n <= 0) {
+      throw ArgumentError.value(n, 'n', 'Must be greater than zero.');
+    }
+    if (per <= Duration.zero) {
+      throw ArgumentError.value(
+        per,
+        'per',
+        'Must be greater than Duration.zero.',
+      );
+    }
+  }
   final _queue = HeapPriorityQueue<PriorityTask<dynamic>>();
 
   // todo add dispose
@@ -27,8 +38,8 @@ class RateScheduler implements PriorityScheduler {
 
   final int n;
   final Duration per;
-
-  final Queue<Stopwatch> _recentTimes = Queue<Stopwatch>();
+  final Stopwatch _clock = Stopwatch()..start();
+  final Queue<int> _recentStartTimesUs = Queue<int>();
 
   /// Notifies the scheduler that it should run the callback sometime. The
   /// actual call will occur asynchronously at the time selected by the
@@ -71,9 +82,13 @@ class RateScheduler implements PriorityScheduler {
           break;
         }
 
-        if (_recentTimes.length >= n) {
+        if (_recentStartTimesUs.length >= n) {
           // we will wail the oldest task to become "too old"
-          final delay = per - _recentTimes.first.elapsed;
+          final elapsedUs =
+              _clock.elapsedMicroseconds - _recentStartTimesUs.first;
+          final delay = Duration(
+            microseconds: per.inMicroseconds - elapsedUs,
+          );
           if (delay > Duration.zero) {
             await Future<void>.delayed(delay);
             // sometimes this pause ends a few milliseconds earlier than
@@ -87,15 +102,20 @@ class RateScheduler implements PriorityScheduler {
         }
 
         // removing too old tasks
-        while (_recentTimes.isNotEmpty && _recentTimes.first.elapsed >= per) {
-          _recentTimes.removeFirst();
+        while (_recentStartTimesUs.isNotEmpty) {
+          final elapsedUs =
+              _clock.elapsedMicroseconds - _recentStartTimesUs.first;
+          if (elapsedUs < per.inMicroseconds) {
+            break;
+          }
+          _recentStartTimesUs.removeFirst();
         }
 
-        while (_recentTimes.length < n && _queue.isNotEmpty) {
+        while (_recentStartTimesUs.length < n && _queue.isNotEmpty) {
           // running new task
           final task = _queue.removeFirst();
           // remembering task start time
-          _recentTimes.add(Stopwatch()..start());
+          _recentStartTimesUs.add(_clock.elapsedMicroseconds);
           unawaited(Future(task.runIfNotCanceled));
         }
       }

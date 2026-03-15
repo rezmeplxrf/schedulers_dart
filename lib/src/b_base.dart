@@ -13,7 +13,10 @@ typedef GetterFunc<R> = FutureOr<R> Function();
 @internal
 typedef CancelFunc = void Function(InternalTask<dynamic>);
 
-class TaskCanceled {}
+class TaskCanceled implements Exception {
+  @override
+  String toString() => 'TaskCanceled';
+}
 
 abstract class Task<R> {
   Future<R> get result;
@@ -43,6 +46,7 @@ class InternalTask<R> extends Task<R> {
     if (!_willRun) {
       return;
     }
+    _started = true;
 
     try {
       _readyResult = await _block();
@@ -82,6 +86,10 @@ class InternalTask<R> extends Task<R> {
       // He we probably get an unhandled `TaskCanceled`. To avoid this he
       // can just avoid canceling tasks, or storing their future results...
 
+      _haveError = true;
+      _readyError = e;
+      _readyStackTrace = stacktrace;
+
       if (_completer != null) {
         assert(!_completer!.isCompleted);
         _completer!.completeError(e, stacktrace);
@@ -90,6 +98,7 @@ class InternalTask<R> extends Task<R> {
         rethrow;
       }
     } finally {
+      _completed = true;
       _willRun = false; // todo unit test
     }
   }
@@ -104,10 +113,20 @@ class InternalTask<R> extends Task<R> {
   /// instead messing with Completer
   bool _haveResult = false;
   late R _readyResult;
+  bool _haveError = false;
+  late Object _readyError;
+  StackTrace? _readyStackTrace;
+  bool _started = false;
+  bool _completed = false;
+  bool _canceled = false;
 
   @override
   Future<R> get result => _haveResult
       ? Future<R>.value(_readyResult)
+      : _haveError
+      ? Future<R>.error(_readyError, _readyStackTrace)
+      : _canceled
+      ? Future<R>.error(TaskCanceled())
       : (_completer ??= Completer<R>()).future;
 
   bool _willRun = true;
@@ -130,11 +149,18 @@ class InternalTask<R> extends Task<R> {
     assert(_willRun);
     assert(!value);
 
+    // Cancellation only applies while the task is still queued. Once started,
+    // the task cannot be interrupted safely and should finish normally.
+    if (_started || _completed) {
+      return;
+    }
+
     _willRun = false;
+    _canceled = true;
     onCancel?.call(this);
 
     if (_completer?.isCompleted == false) {
-      _completer!.completeError(TaskCanceled);
+      _completer!.completeError(TaskCanceled());
     }
   }
 }

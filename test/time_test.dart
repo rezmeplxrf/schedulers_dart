@@ -8,16 +8,15 @@ void main() {
   // todo test tasks that throw exceptions
 
   test('Time', () async {
-
     final now = DateTime.now().toUtc();
 
     int value = 0;
 
     final s = TimeScheduler();
-    s.run(()=>(value=1), now.add(Duration(seconds: 1)));
-    s.run(()=>(value=2), now.add(Duration(seconds: 2)));
-    final t3 = s.run(()=>(value=3), now.add(Duration(seconds: 3)));
-    s.run(()=>(value=4), now.add(Duration(seconds: 4)));
+    s.run(() => (value = 1), now.add(Duration(seconds: 1)));
+    s.run(() => (value = 2), now.add(Duration(seconds: 2)));
+    final t3 = s.run(() => (value = 3), now.add(Duration(seconds: 3)));
+    s.run(() => (value = 4), now.add(Duration(seconds: 4)));
 
     expect(value, 0);
     await Future<void>.delayed(Duration(milliseconds: 1100));
@@ -36,7 +35,24 @@ void main() {
     final s = TimeScheduler();
     s.run(() => {}, DateTime.now().add(Duration(seconds: 1)));
     s.dispose();
-    expect(()=>s.run(() => {}, DateTime.now().add(Duration(seconds: 1))), throwsStateError);
+    expect(
+      () => s.run(() => {}, DateTime.now().add(Duration(seconds: 1))),
+      throwsStateError,
+    );
   });
 
+  test(
+    'dispose cancels pending tasks and completes waiters with TaskCanceled',
+    () async {
+      final s = TimeScheduler();
+      final task = s.run(
+        () => 1,
+        DateTime.now().add(const Duration(seconds: 5)),
+      );
+
+      s.dispose();
+
+      await expectLater(task.result, throwsA(isA<TaskCanceled>()));
+    },
+  );
 }

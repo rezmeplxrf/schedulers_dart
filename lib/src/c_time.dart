@@ -5,23 +5,39 @@ import 'dart:async';
 import 'package:schedulers/src/b_base.dart';
 
 class TimeScheduler {
+  final Map<InternalTask<dynamic>, Timer> _timers =
+      <InternalTask<dynamic>, Timer>{};
+
   Task<R> run<R>(GetterFunc<R> func, DateTime time) {
     if (_disposed) {
       throw StateError('The object is disposed');
     }
 
-    final t = InternalTask<R>(func);
-    Future.delayed(_computeDelay(time), () {
+    late final InternalTask<R> task;
+    late final Timer timer;
+    task = InternalTask<R>(
+      func,
+      onCancel: (_) {
+        final removedTimer = _timers.remove(task);
+        removedTimer?.cancel();
+      },
+    );
+    timer = Timer(_computeDelay(time), () {
+      _timers.remove(task);
       if (!_disposed) {
-        unawaited(t.runIfNotCanceled());
+        unawaited(task.runIfNotCanceled());
       }
     });
+    _timers[task] = timer;
 
-    return t;
+    return task;
   }
 
   void dispose() {
-    // todo cancel tasks
+    for (final task in _timers.keys.toList()) {
+      task.willRun = false;
+    }
+    _timers.clear();
     _disposed = true;
   }
 

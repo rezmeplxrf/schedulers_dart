@@ -13,7 +13,11 @@ import 'package:schedulers/src/b_base.dart';
 /// functions.
 class ParallelScheduler implements PriorityScheduler {
   /// [max] sets the maximum number of tasks that can be run simultaneously.
-  ParallelScheduler(this.max);
+  ParallelScheduler(this.max) {
+    if (max <= 0) {
+      throw ArgumentError.value(max, 'max', 'Must be greater than zero.');
+    }
+  }
   final int max;
   final _tasks = HeapPriorityQueue<PriorityTask<dynamic>>();
 
