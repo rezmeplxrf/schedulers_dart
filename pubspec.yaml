@@ -1,6 +1,7 @@
 name: schedulers
 description: Dart library for running asynchronous functions on time. Useful for load balancing, rate limiting, lazy execution.
 repository: https://github.com/rtmigo/schedulers
+publish_to: none
 
 version: 1.0.3
 
