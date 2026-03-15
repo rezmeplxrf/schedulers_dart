@@ -12,7 +12,15 @@ class LazyScheduler {
   // todo return Task from run
   // todo add dispose
 
-  LazyScheduler({this.latency = const Duration(seconds: 1000), this.callEach});
+  LazyScheduler({this.latency = const Duration(seconds: 1000), this.callEach}) {
+    if (callEach != null && callEach! <= 0) {
+      throw ArgumentError.value(
+        callEach,
+        'callEach',
+        'Must be greater than zero when provided.',
+      );
+    }
+  }
   int _ignored = 0;
   final int? callEach;
   late GetterFunc<void>? _callback;
@@ -32,10 +40,10 @@ class LazyScheduler {
     await Future<void>.delayed(latency);
 
     if (_newestRunId == runId) {
-      _callback!();
+      await _callback!();
       _ignored = 0;
     } else if (callEach != null && ++_ignored >= callEach!) {
-      _callback!();
+      await _callback!();
       _ignored = 0;
     }
   }
